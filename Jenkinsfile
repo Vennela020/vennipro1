@@ -19,7 +19,7 @@ pipeline {
             steps {
                 echo 'Building Docker image...'
                 script {
-                    sh 'docker build -t ${DOCKER_IMAGE}:latest .'
+                    sh 'sudo docker build -t ${DOCKER_IMAGE}:latest .'
                 }
             }
         }
@@ -28,7 +28,7 @@ pipeline {
             steps {
                 echo 'Tagging Docker image...'
                 script {
-                    sh 'docker tag ${DOCKER_IMAGE}:latest ${DOCKER_IMAGE}:${BUILD_NUMBER}'
+                    sh 'sudo docker tag ${DOCKER_IMAGE}:latest ${DOCKER_IMAGE}:${BUILD_NUMBER}'
                 }
             }
         }
@@ -38,8 +38,8 @@ pipeline {
                 echo 'Pushing image to Docker Hub...'
                 withCredentials([usernamePassword(credentialsId: 'githubid', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     sh 'echo $PASS | docker login -u $USER --password-stdin'
-                    sh 'docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}'
-                    sh 'docker push ${DOCKER_IMAGE}:latest'
+                    sh 'sudo docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}'
+                    sh 'sudo docker push ${DOCKER_IMAGE}:latest'
                 }
             }
         }
@@ -48,8 +48,8 @@ pipeline {
             steps {
                 echo 'Cleaning up local Docker images...'
                 script {
-                    sh 'docker rmi ${DOCKER_IMAGE}:${BUILD_NUMBER} || true'
-                    sh 'docker rmi ${DOCKER_IMAGE}:latest || true'
+                    sh 'sudo docker rmi ${DOCKER_IMAGE}:${BUILD_NUMBER} || true'
+                    sh 'sudo docker rmi ${DOCKER_IMAGE}:latest || true'
                 }
             }
         }
@@ -59,10 +59,10 @@ pipeline {
                 echo 'Deploying application container...'
                 script {
                     sh '''
-                    docker pull ${DOCKER_IMAGE}:latest
-                    docker stop app-container || true
-                    docker rm app-container || true
-                    docker run -d --name app-container -p ${CONTAINER_PORT}:8080 ${DOCKER_IMAGE}:latest
+                    sudo docker pull ${DOCKER_IMAGE}:latest
+                    sudo docker stop app-container || true
+                    sudo docker rm app-container || true
+                    sudo docker run -d --name app-container -p ${CONTAINER_PORT}:8080 ${DOCKER_IMAGE}:latest
                     '''
                 }
             }
@@ -72,7 +72,7 @@ pipeline {
             steps {
                 echo 'Checking if container is running...'
                 script {
-                    sh 'docker ps -a'
+                    sh 'sudo docker ps -a'
                     sh 'curl -I http://localhost:${CONTAINER_PORT}'
                 }
             }
