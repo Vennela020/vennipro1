@@ -11,7 +11,7 @@ pipeline {
         stage('Stage 1 - Checkout Code') {
             steps {
                 echo 'Cloning source code from GitHub...'
-                git branch: 'main', url: 'https://github.com/Vennela020/webapp.git'
+                git branch: 'main', url: 'https://github.com/Vennela020/vennipro1'
             }
         }
 
