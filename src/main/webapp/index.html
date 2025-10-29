@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Flixy — Demo Streaming UI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+<style>
+  /* ========== Reset & base ========== */
+  :root{
+    --bg:#0b0f14;
+    --card:#0f1720;
+    --muted:#9aa5b1;
+    --accent:#e50914;
+    --glass: rgba(255,255,255,0.04);
+    --radius:12px;
+    --max-width:1200px;
+    --gap:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: linear-gradient(180deg,#051017 0%, #07111a 100%);
+    color:#e6eef6;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    line-height:1.35;
+  }
+  .app{
+    max-width:var(--max-width);
+    margin:24px auto;
+    padding:18px;
+    gap:18px;
+  }
+
+  /* ========== Header ========== */
+  header.app-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:16px;
+  }
+  .brand{
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  .logo{
+    width:44px;height:44px;border-radius:8px;
+    background:linear-gradient(135deg,#ff6b6b,#e50914);
+    display:inline-grid;place-items:center;font-weight:700;
+    box-shadow:0 6px 18px rgba(233,9,20,0.14);
+    color:white;font-size:20px;
+  }
+  .brand h1{font-size:18px;margin:0}
+  .nav-actions{display:flex;gap:8px;align-items:center}
+  .search{
+    position:relative;
+    display:flex;
+    align-items:center;
+    background:var(--glass);
+    border-radius:10px;
+    padding:6px 10px;
+  }
+  .search input{
+    background:transparent;border:0;outline:none;color:inherit;width:220px;
+  }
+  .btn{
+    background:transparent;border:1px solid rgba(255,255,255,0.06);
+    padding:8px 12px;border-radius:10px;color:inherit;
+    cursor:pointer;font-weight:600;
+  }
+  .btn.primary{
+    background:var(--accent);border:0;color:white;
+    box-shadow:0 6px 18px rgba(233,9,20,0.16);
+  }
+
+  /* ========== Hero ========== */
+  .hero{
+    position:relative;
+    border-radius:16px;
+    overflow:hidden;
+    display:grid;
+    grid-template-columns: 1fr 340px;
+    gap:18px;
+    background:
+      radial-gradient(1200px 400px at 10% 30%, rgba(229,9,20,0.14), transparent 10%),
+      linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.25));
+    padding:22px;
+    align-items:center;
+  }
+  .hero .hero-info h2{margin:0;font-size:28px}
+  .hero .meta{color:var(--muted);margin-top:8px}
+  .hero .hero-art{
+    height:160px;width:320px;border-radius:12px;overflow:hidden;align-self:center;
+  }
+  .hero .hero-art img{width:100%;height:100%;object-fit:cover;display:block}
+
+  /* ========== Rows / Carousels ========== */
+  .row{
+    margin-top:18px;
+  }
+  .row h3{margin:8px 0 12px 4px;font-size:16px}
+  .carousel{
+    display:flex;
+    gap:12px;
+    overflow:auto;
+    padding-bottom:6px;
+    scroll-behavior:smooth;
+  }
+  .movie{
+    min-width:180px;
+    width:180px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.18));
+    border-radius:10px;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease;
+    flex-shrink:0;
+  }
+  .movie:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(2,6,23,0.6)}
+  .poster{width:100%;height:270px;object-fit:cover;display:block}
+  .movie .m-info{padding:10px}
+  .m-title{font-weight:600}
+  .m-sub{color:var(--muted);font-size:13px;margin-top:6px}
+
+  /* small screens */
+  @media (max-width:880px){
+    .hero{grid-template-columns:1fr;grid-auto-rows:auto}
+    .hero .hero-art{width:100%;height:220px}
+    .movie{min-width:140px;width:140px}
+  }
+
+  /* ========== Modal ========== */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(3,7,10,0.6);display:none;
+    align-items:center;justify-content:center;padding:24px;z-index:60;
+  }
+  .modal{
+    width:100%;max-width:980px;background:linear-gradient(180deg,#071018,#05101a);
+    border-radius:14px;padding:18px;box-shadow:0 30px 80px rgba(2,6,23,0.8);
+  }
+  .modal .modal-body{display:grid;grid-template-columns: 1fr 340px;gap:18px}
+  .modal .poster-large{width:100%;height:380px;object-fit:cover;border-radius:10px}
+  .modal .details{color:var(--muted);font-size:13px}
+  .close-btn{position:absolute;right:22px;top:22px;padding:8px;border-radius:10px;background:rgba(255,255,255,0.04);border:0;color:white;cursor:pointer}
+
+  /* ========== Tiny utilities ========== */
+  .chip{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);font-weight:600}
+  .muted{color:var(--muted)}
+  .controls{display:flex;gap:8px;align-items:center}
+  .like{background:transparent;border:0;color:var(--muted);cursor:pointer}
+  .saved{color:gold}
+  .sr-only{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Flixy demo streaming UI">
+    <header class="app-header" role="banner">
+      <div class="brand" aria-hidden="true">
+        <div class="logo">F</div>
+        <div>
+          <h1>Flixy</h1>
+          <div class="muted" style="font-size:12px">Demo streaming UI</div>
+        </div>
+      </div>
+
+      <div class="nav-actions" role="navigation" aria-label="Main navigation">
+        <div class="search" role="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="opacity:.8;margin-right:8px"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <input id="search" placeholder="Search movies, TV shows..." aria-label="Search movies" />
+        </div>
+
+        <button class="btn" id="mylistBtn" aria-haspopup="dialog">My List <span id="myListCount" style="margin-left:6px;color:var(--muted)">0</span></button>
+        <button class="btn primary" id="signinBtn">Sign In</button>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-info">
+        <h2 id="hero-title">Featured: <span id="hero-name">The Red Horizon</span></h2>
+        <div class="meta">2024 • Action • Adventure • <span class="chip">HD</span></div>
+        <p class="muted" style="margin-top:12px" id="hero-desc">An ex-agent must race against a covert syndicate to stop a global data weapon from being unleashed.</p>
+
+        <div style="margin-top:14px" class="controls">
+          <button class="btn primary" id="playHero">Play</button>
+          <button class="btn" id="infoHero">More Info</button>
+        </div>
+      </div>
+
+      <div class="hero-art" aria-hidden="true">
+        <img id="hero-img" alt="Hero poster" src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=1d9f854d0e7e1f0b594905a4b847b8e3">
+      </div>
+    </section>
+
+    <!-- Rows -->
+    <main id="catalog" aria-label="Catalog">
+      <!-- Rows will be injected here -->
+    </main>
+  </div>
+
+  <!-- modal -->
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <button class="close-btn" id="closeModal" aria-label="Close">✕</button>
+      <div class="modal-body">
+        <div>
+          <img id="modalPoster" class="poster-large" alt="Poster">
+          <div style="margin-top:12px">
+            <button class="btn primary" id="modalPlay">Play Trailer</button>
+            <button class="btn" id="modalSave">+ My List</button>
+          </div>
+        </div>
+        <div>
+          <h2 id="modalTitle">Title</h2>
+          <div class="details" id="modalMeta">Year • Genre • Runtime</div>
+          <p style="margin-top:12px" id="modalDesc">Long description</p>
+          <div style="margin-top:18px">
+            <strong>Cast</strong>
+            <div class="muted" id="modalCast">Actor A, Actor B</div>
+          </div>
+          <div id="trailerWrap" style="margin-top:16px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   Example data source
+   (In real app you'd fetch from API)
+   ========================= */
+const MOVIES = [
+  {
+    id: 'm1',
+    title: 'The Red Horizon',
+    year: 2024,
+    rating: 'PG-13',
+    genres: ['Action','Adventure'],
+    runtime: '2h 3m',
+    desc: 'An ex-agent must race against a covert syndicate to stop a global data weapon from being unleashed.',
+    poster: 'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=1d9f854d0e7e1f0b594905a4b847b8e3',
+    trailer: 'dQw4w9WgXcQ', // demo id (replace with real YouTube id)
+    cast: ['A. Rivera','J. Cho','S. Patel'],
+    featured: true
+  },
+  {
+    id:'m2', title:'Midnight Atlas', year:2023, rating:'R',
+    genres:['Drama','Mystery'], runtime:'1h 50m',
+    desc:'A cartographer discovers a map that redraws itself with the future.',
+    poster:'https://images.unsplash.com/photo-1505685296765-3a2736de412f?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=6e1b4c0df06cfa0f8e6b0c7e4f6b5c3a',
+    trailer:'3fumBcKC6RE', cast:['L. Barker','M. Sato'], featured:false
+  },
+  {
+    id:'m3', title:'Cosmic Drift', year:2022, rating:'PG',
+    genres:['Sci-fi','Adventure'], runtime:'2h 10m',
+    desc:'A small crew undertakes a cargo run that becomes the voyage of a lifetime.',
+    poster:'https://images.unsplash.com/photo-1478720568477-152d9b164e26?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=3de6f3a3e0e9ef620b34bd7b9fb4a7cf',
+    trailer:'Zi_XLOBDo_Y', cast:['T. Granger','E. Molina'], featured:false
+  },
+  {
+    id:'m4', title:'Kitchen Confidentials', year:2021, rating:'TV-MA',
+    genres:['Comedy'], runtime:'45m',
+    desc:'A kitchen brigade at a struggling bistro fights to reclaim their Michelin star and sanity.',
+    poster:'https://images.unsplash.com/photo-1541542684-6e3e1bffbca5?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=7a1764a3e7c3c4ddc4f18b9d6d68',
+    trailer:'V-_O7nl0Ii0', cast:['P. Diaz','R. Lin'], featured:false
+  },
+  // add more samples
+  {id:'m5', title:'Neon Run', year:2020, rating:'PG-13', genres:['Action','Thriller'], runtime:'1h 58m', desc:'Under neon skies, a courier unravels a city conspiracy.', poster:'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=7b6f9c46f3a8bb9ad0c1e8b8d371', trailer:'sCNrK-n68CM', cast:['D. Kaur']},
+  {id:'m6', title:'Summer Sonata', year:2019, rating:'PG', genres:['Romance'], runtime:'1h 45m', desc:'Two strangers meet for a summer that changes their lives.', poster:'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=1f2a9f7acd2f0c5f8c5a0f0b', trailer:'e-ORhEE9VVg', cast:['M. Rossi','C. Green']},
+];
+
+/* ========== Utilities ========== */
+const $ = sel => document.querySelector(sel);
+const create = (tag, attrs={}, ...children) => {
+  const el = document.createElement(tag);
+  for(const k in attrs){
+    if(k==='class') el.className = attrs[k];
+    else if(k==='html') el.innerHTML = attrs[k];
+    else el.setAttribute(k,attrs[k]);
+  }
+  for(const c of children) if(typeof c === 'string') el.appendChild(document.createTextNode(c)); else if(c) el.appendChild(c);
+  return el;
+}
+
+/* ========== Render catalog ========== */
+const catalog = $('#catalog');
+function renderRows(list){
+  catalog.innerHTML = '';
+  // Featured row
+  const featured = list.filter(m=>m.featured);
+  if(featured.length){
+    const row = create('section',{class:'row'});
+    row.appendChild(create('h3',{},'Featured'));
+    const car = create('div',{class:'carousel'});
+    for(const m of featured) car.appendChild(movieCard(m));
+    row.appendChild(car);
+    catalog.appendChild(row);
+  }
+
+  // All movies grouped by genre first genre as row
+  const byGenre = {};
+  for(const m of list){
+    const g = m.genres?.[0] || 'Other';
+    byGenre[g] = byGenre[g] || [];
+    byGenre[g].push(m);
+  }
+  for(const [genre, items] of Object.entries(byGenre)){
+    const row = create('section',{class:'row'});
+    row.appendChild(create('h3',{},genre + ' Picks'));
+    const car = create('div',{class:'carousel','role':'list'});
+    for(const m of items) car.appendChild(movieCard(m));
+    row.appendChild(car);
+    catalog.appendChild(row);
+  }
+}
+
+function movieCard(m){
+  const card = create('button',{class:'movie','aria-label':m.title,'type':'button'});
+  const img = create('img',{class:'poster',src:m.poster,alt:m.title+' poster'});
+  const info = create('div',{class:'m-info'});
+  info.appendChild(create('div',{class:'m-title'},m.title));
+  info.appendChild(create('div',{class:'m-sub'}, `${m.year} • ${m.genres?.join(', ') || ''}`));
+  card.appendChild(img);
+  card.appendChild(info);
+
+  card.addEventListener('click',()=> openModal(m.id));
+  return card;
+}
+
+/* ========== Modal behavior ========== */
+const modalBackdrop = $('#modalBackdrop');
+const modalTitle = $('#modalTitle');
+const modalPoster = $('#modalPoster');
+const modalMeta = $('#modalMeta');
+const modalDesc = $('#modalDesc');
+const modalCast = $('#modalCast');
+const trailerWrap = $('#trailerWrap');
+const modalSaveBtn = $('#modalSave');
+let currentMovie = null;
+
+function openModal(id){
+  currentMovie = MOVIES.find(x=>x.id===id);
+  if(!currentMovie) return;
+  modalTitle.textContent = currentMovie.title;
+  modalPoster.src = currentMovie.poster;
+  modalMeta.textContent = `${currentMovie.year} • ${currentMovie.genres.join(', ')} • ${currentMovie.runtime || ''}`;
+  modalDesc.textContent = currentMovie.desc;
+  modalCast.textContent = currentMovie.cast?.join(', ') || 'N/A';
+  trailerWrap.innerHTML = '';
+  updateSaveButton();
+  modalBackdrop.style.display = 'flex';
+  modalBackdrop.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+  // focus trap minimal
+  $('#closeModal').focus();
+}
+
+function closeModal(){
+  modalBackdrop.style.display = 'none';
+  modalBackdrop.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+  trailerWrap.innerHTML = '';
+  currentMovie = null;
+}
+
+/* play trailer - embed youtube iframe */
+$('#modalPlay').addEventListener('click', ()=>{
+  if(!currentMovie) return;
+  trailerWrap.innerHTML = `<div style="position:relative;padding-top:56.25%"><iframe src="https://www.youtube.com/embed/${currentMovie.trailer}?autoplay=1" allow="autoplay; fullscreen" style="position:absolute;inset:0;border:0;width:100%;height:100%" title="Trailer"></iframe></div>`;
+});
+
+/* hero info buttons */
+$('#playHero').addEventListener('click', ()=> {
+  const f = MOVIES.find(m=>m.featured) || MOVIES[0];
+  if(!f) return;
+  openModal(f.id);
+  // auto play
+  setTimeout(()=> $('#modalPlay').click(), 200);
+});
+$('#infoHero').addEventListener('click', ()=> {
+  const f = MOVIES.find(m=>m.featured) || MOVIES[0];
+  if(f) openModal(f.id);
+});
+
+/* close modal */
+$('#closeModal').addEventListener('click', closeModal);
+modalBackdrop.addEventListener('click',(ev)=> {
+  if(ev.target === modalBackdrop) closeModal();
+});
+document.addEventListener('keydown', (ev)=> {
+  if(ev.key === 'Escape') closeModal();
+});
+
+/* ========== My List (localStorage) ========== */
+const STORAGE_KEY = 'flixy_mylist_v1';
+function getMyList(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e){ return [] } }
+function setMyList(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); updateMyListCount(); }
+function updateMyListCount(){ $('#myListCount').textContent = getMyList().length; }
+
+modalSaveBtn.addEventListener('click', ()=>{
+  if(!currentMovie) return;
+  const list = getMyList();
+  const exists = list.includes(currentMovie.id);
+  if(!exists){
+    list.push(currentMovie.id); setMyList(list); updateSaveButton();
+    modalSaveBtn.textContent = 'Saved ✓';
+  } else {
+    const next = list.filter(i=>i !== currentMovie.id); setMyList(next); updateSaveButton();
+    modalSaveBtn.textContent = '+ My List';
+  }
+});
+
+function updateSaveButton(){
+  if(!currentMovie) return;
+  const list = getMyList();
+  modalSaveBtn.textContent = list.includes(currentMovie.id) ? 'Saved ✓' : '+ My List';
+}
+
+/* My List dialog: quick simple list render */
+$('#mylistBtn').addEventListener('click', ()=>{
+  const list = getMyList();
+  if(list.length === 0){ alert('My List is empty — add items from catalog.'); return; }
+  const names = list.map(id => (MOVIES.find(m=>m.id===id) || {title:'(removed)'}).title).join('\n• ');
+  alert('My List:\n\n• ' + names);
+});
+
+/* ========== Search ========== */
+$('#search').addEventListener('input', e=>{
+  const q = e.target.value.trim().toLowerCase();
+  if(!q){ renderRows(MOVIES); setHeroFromFeatured(); return; }
+  const filtered = MOVIES.filter(m => (m.title + ' ' + (m.desc||'') + ' ' + (m.genres||[]).join(' ')).toLowerCase().includes(q));
+  renderRows(filtered);
+});
+
+/* ========== Initialize hero content ========== */
+function setHeroFromFeatured(){
+  const f = MOVIES.find(m=>m.featured) || MOVIES[0];
+  if(!f) return;
+  $('#hero-name').textContent = f.title;
+  $('#hero-desc').textContent = f.desc;
+  $('#hero-img').src = f.poster;
+}
+
+/* ========== Initial render ========== */
+renderRows(MOVIES);
+setHeroFromFeatured();
+updateMyListCount();
+
+/* Accessibility: allow left-right arrow to scroll visible carousels */
+document.addEventListener('keydown', (e)=>{
+  if(e.target.tagName === 'INPUT' || modalBackdrop.style.display === 'flex') return;
+  if(e.key === 'ArrowLeft' || e.key === 'ArrowRight'){
+    // find first visible carousel and scroll
+    const car = document.querySelector('.carousel');
+    if(!car) return;
+    car.scrollBy({left: e.key === 'ArrowRight' ? 320 : -320, behavior:'smooth'});
+  }
+});
+</script>
+</body>
+</html>
+
