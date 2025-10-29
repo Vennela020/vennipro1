@@ -1,97 +1,85 @@
-pipeline {
+pipeline{
     agent any
-
-    environment {
-        DOCKER_IMAGE = 'vennela2012/webapp'
-        CONTAINER_PORT = '8084'
+    tools{
+        maven 'maven' 
     }
-
-    stages {
-
-        stage('Stage 1 - Checkout Code') {
+    environment {
+        DOCKERHUB_CREDENTIALS_ID = 'vennela' 
+        DOCKERHUB_USERNAME       = 'vennela2012'
+        IMAGE_NAME               = "${env.DOCKERHUB_USERNAME}/my-app"
+        CONTAINER_NAME           = "my-app-container"
+    }
+    stages{
+        stage('Github src') {
             steps {
-                echo 'Cloning source code from GitHub...'
+                echo 'Checking out source code...'
                 git branch: 'main', url: 'https://github.com/Vennela020/vennipro1'
             }
         }
 
-        stage('Stage 2 - Build Docker Image') {
+        stage('Build stage'){
+            steps{
+                echo 'Building with Maven...'
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Build Docker Image') {
             steps {
-                echo 'Building Docker image...'
+                echo "Building Docker image: ${IMAGE_NAME}:${BUILD_NUMBER}"
+                sh "sudo docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} ."
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            steps {
+                echo 'Logging in to Docker Hub...'
+                withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | sudo docker login -u $DOCKER_USER --password-stdin'
+                }
+            }
+        }
+
+        stage('Tag and Push Docker Image') {
+            steps {
                 script {
-                    sh 'sudo docker build -t ${DOCKER_IMAGE}:latest .'
+                    echo "Pushing image: ${IMAGE_NAME}:${BUILD_NUMBER}"
+                    sh "sudo docker push ${IMAGE_NAME}:${BUILD_NUMBER}"
+                    
+                    echo "Tagging as 'latest'..."
+                    sh "sudo docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest"
+                    
+                    echo "Pushing 'latest' tag..."
+                    sh "sudo docker push ${IMAGE_NAME}:latest"
                 }
             }
         }
 
-        stage('Stage 3 - Tag Image') {
+        stage('Remove Local Docker Image') {
             steps {
-                echo 'Tagging Docker image...'
-                script {
-                    sh 'sudo docker tag ${DOCKER_IMAGE}:latest ${DOCKER_IMAGE}:${BUILD_NUMBER}'
-                }
+                echo "Removing local image: ${IMAGE_NAME}:${BUILD_NUMBER}"
+                sh "sudo docker rmi ${IMAGE_NAME}:${BUILD_NUMBER}"
             }
         }
 
-        stage('Stage 4 - Push Image to Docker Hub') {
+        stage('Run Container') {
             steps {
-                echo 'Pushing image to Docker Hub...'
-                withCredentials([usernamePassword(credentialsId: 'githubid', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    sh 'echo $PASS | docker login -u $USER --password-stdin'
-                    sh 'sudo docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}'
-                    sh 'sudo docker push ${DOCKER_IMAGE}:latest'
-                }
-            }
-        }
-
-        stage('Stage 5 - Remove Local Images') {
-            steps {
-                echo 'Cleaning up local Docker images...'
-                script {
-                    sh 'sudo docker rmi ${DOCKER_IMAGE}:${BUILD_NUMBER} || true'
-                    sh 'sudo docker rmi ${DOCKER_IMAGE}:latest || true'
-                }
-            }
-        }
-
-        stage('Stage 6 - Deploy on Server') {
-            steps {
-                echo 'Deploying application container...'
-                script {
-                    sh '''
-                    sudo docker pull ${DOCKER_IMAGE}:latest
-                    sudo docker stop app-container || true
-                    sudo docker rm app-container || true
-                    sudo docker run -d --name app-container -p ${CONTAINER_PORT}:8080 ${DOCKER_IMAGE}:latest
-                    '''
-                }
-            }
-        }
-
-        stage('Stage 7 - Verify Deployment') {
-            steps {
-                echo 'Checking if container is running...'
-                script {
-                    sh 'sudo docker ps -a'
-                    sh 'curl -I http://localhost:${CONTAINER_PORT}'
-                }
-            }
-        }
-
-        stage('Stage 8 - Post Build Cleanup') {
-            steps {
-                echo 'Post build actions...'
-                cleanWs()
+                echo "Running new container ${CONTAINER_NAME} on port 8084..."
+                sh "sudo docker stop ${CONTAINER_NAME} || true"
+                sh "sudo docker rm ${CONTAINER_NAME} || true"
+                sh "sudo docker run -d -p 8084:8080 --name ${CONTAINER_NAME} ${IMAGE_NAME}:latest"
             }
         }
     }
-
     post {
+        always {
+            echo 'This will always run after the stages are complete.'
+        }
         success {
-            echo '✅ Build and deployment successful!'
+            echo 'This will run only if the pipeline succeeds.'
         }
         failure {
-            echo '❌ Build failed. Please check logs.'
+            echo 'This will run only if the pipeline fails.'
         }
     }
 }
